@@ -1,5 +1,6 @@
-from fastapi import FastAPI
-from sqlmodel import SQLModel, create_engine, Field, Session, select
+from fastapi import FastAPI, Query
+from sqlmodel import SQLModel, create_engine, Field, Session, select 
+from sqlalchemy import asc, desc
 from typing import Optional
 from pydantic import BaseModel
 
@@ -10,20 +11,20 @@ sqlite_file = "todo.db"
 sqlite_url = f"sqlite:///{sqlite_file}"
 engine = create_engine(sqlite_url, echo=True)
 
-# DB Model
+# DB Model to add unique ID
 class Data_SQL(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     description: Optional[str] = None
     completed: bool = False
 
-# Model for input (no ID)
+# DB Model for input (no ID)
 class DataCreate(SQLModel):
     title: str
     description: Optional[str] = None
     completed: bool = False
 
-# Model for update (with optional fields)
+# DB Model for update (with optional fields)
 class DataUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
@@ -34,11 +35,33 @@ class DataUpdate(BaseModel):
 def on_startup():
     SQLModel.metadata.create_all(engine)
 
-# Get all data from /data
+# Get all data from /data, And search for specific title/complete(true/false)
 @app.get("/data")
-def get_data():
+def get_data(title: Optional[str] = Query(None), 
+            completed: Optional[bool] = Query(None),
+            limit: int = Query(10, ge=1),
+            offset: int = Query(0, ge=0),
+            sort_by: str = Query("id", pattern="^(id|title|completed)$"),
+            sort_order: str = Query("asc", pattern="^(asc|desc)$")
+            ):
+    
     with Session(engine) as session:
         statement = select(Data_SQL)
+
+        if title is not None:
+            statement = statement.where(Data_SQL.title.contains(title))
+        if completed is not None:
+            statement = statement.where(Data_SQL.completed == completed)
+        
+        # Sorting
+        sort_column = getattr(Data_SQL, sort_by)
+        if sort_order == "asc":
+            statement = statement.order_by(asc(sort_column))
+        else:
+            statement = statement.order_by(desc(sort_column))
+
+        # Pagination
+        statement = statement.offset(offset).limit(limit)
         results = session.exec(statement).all()
         return results
 
@@ -95,4 +118,3 @@ def patch_data(id: int, data_patch: DataUpdate):
         session.commit()
         session.refresh(data)
         return data
-
