@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query
+from starlette.responses import FileResponse
 from sqlmodel import Session, select
 from backend.models.todo import Data_SQL, DataCreate, DataUpdate
 from backend.database import engine
@@ -6,6 +7,10 @@ from sqlalchemy import asc, desc
 from typing import List, Optional
 
 router = APIRouter()
+
+@router.get("/")
+def home_page():
+    return FileResponse("frontend/index.html")
 
 # Get all data from /data, And search for specific title/complete(true/false)
 @router.get("/data", response_model=List[Data_SQL])
@@ -36,6 +41,7 @@ def get_data(title: Optional[str] = Query(None),
         statement = statement.offset(offset).limit(limit)
         results = session.exec(statement).all()
         return results
+
 
 # Post data
 @router.post("/data")
