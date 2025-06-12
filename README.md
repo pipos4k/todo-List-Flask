@@ -18,9 +18,11 @@ A simple RESTful API built with Flask and SQLAlchemy to manage a todo list. It s
 
 - Python 3
 - Flask
-- SQLAlchemy
-- SQLite
-
+- Flask-Login
+- Flask-WTF
+- SQLAlchemy (SQLite as database)
+- HTML5, CSS3, Bootstrap
+- Jinja2 templating engine
 ---
 
 ## Setup and Running
